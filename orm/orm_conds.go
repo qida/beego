@@ -31,6 +31,8 @@ type condValue struct {
 	isOr   bool
 	isNot  bool
 	isCond bool
+	isRaw  bool
+	sql    string
 }
 
 // Condition struct.
@@ -43,6 +45,15 @@ type Condition struct {
 func NewCondition() *Condition {
 	c := &Condition{}
 	return c
+}
+
+// Raw add raw sql to condition
+func (c Condition) Raw(expr string, sql string) *Condition {
+	if len(sql) == 0 {
+		panic(fmt.Errorf("<Condition.Raw> sql cannot empty"))
+	}
+	c.params = append(c.params, condValue{exprs: strings.Split(expr, ExprSep), sql: sql, isRaw: true})
+	return &c
 }
 
 // And add expression to condition
@@ -75,6 +86,19 @@ func (c *Condition) AndCond(cond *Condition) *Condition {
 	return c
 }
 
+// AndNotCond combine a AND NOT condition to current condition
+func (c *Condition) AndNotCond(cond *Condition) *Condition {
+	c = c.clone()
+	if c == cond {
+		panic(fmt.Errorf("<Condition.AndNotCond> cannot use self as sub cond"))
+	}
+
+	if cond != nil {
+		c.params = append(c.params, condValue{cond: cond, isCond: true, isNot: true})
+	}
+	return c
+}
+
 // Or add OR expression to condition
 func (c Condition) Or(expr string, args ...interface{}) *Condition {
 	if expr == "" || len(args) == 0 {
@@ -101,6 +125,19 @@ func (c *Condition) OrCond(cond *Condition) *Condition {
 	}
 	if cond != nil {
 		c.params = append(c.params, condValue{cond: cond, isCond: true, isOr: true})
+	}
+	return c
+}
+
+// OrNotCond combine a OR NOT condition to current condition
+func (c *Condition) OrNotCond(cond *Condition) *Condition {
+	c = c.clone()
+	if c == cond {
+		panic(fmt.Errorf("<Condition.OrNotCond> cannot use self as sub cond"))
+	}
+
+	if cond != nil {
+		c.params = append(c.params, condValue{cond: cond, isCond: true, isNot: true, isOr: true})
 	}
 	return c
 }

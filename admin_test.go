@@ -6,7 +6,7 @@ import (
 )
 
 func TestList_01(t *testing.T) {
-	m := make(map[string]interface{})
+	m := make(M)
 	list("BConfig", BConfig, m)
 	t.Log(m)
 	om := oldMap()
@@ -18,8 +18,8 @@ func TestList_01(t *testing.T) {
 	}
 }
 
-func oldMap() map[string]interface{} {
-	m := make(map[string]interface{})
+func oldMap() M {
+	m := make(M)
 	m["BConfig.AppName"] = BConfig.AppName
 	m["BConfig.RunMode"] = BConfig.RunMode
 	m["BConfig.RouterCaseSensitive"] = BConfig.RouterCaseSensitive
@@ -65,7 +65,10 @@ func oldMap() map[string]interface{} {
 	m["BConfig.WebConfig.Session.SessionCookieLifeTime"] = BConfig.WebConfig.Session.SessionCookieLifeTime
 	m["BConfig.WebConfig.Session.SessionAutoSetCookie"] = BConfig.WebConfig.Session.SessionAutoSetCookie
 	m["BConfig.WebConfig.Session.SessionDomain"] = BConfig.WebConfig.Session.SessionDomain
+	m["BConfig.WebConfig.Session.SessionDisableHTTPOnly"] = BConfig.WebConfig.Session.SessionDisableHTTPOnly
 	m["BConfig.Log.AccessLogs"] = BConfig.Log.AccessLogs
+	m["BConfig.Log.EnableStaticLogs"] = BConfig.Log.EnableStaticLogs
+	m["BConfig.Log.AccessLogsFormat"] = BConfig.Log.AccessLogsFormat
 	m["BConfig.Log.FileLineNum"] = BConfig.Log.FileLineNum
 	m["BConfig.Log.Outputs"] = BConfig.Log.Outputs
 	return m

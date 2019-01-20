@@ -47,7 +47,7 @@ import (
 
 // RFC5424 log message levels.
 const (
-	LevelEmergency = iota
+	LevelEmergency     = iota
 	LevelAlert
 	LevelCritical
 	LevelError
@@ -71,6 +71,7 @@ const (
 	AdapterEs        = "es"
 	AdapterJianLiao  = "jianliao"
 	AdapterSlack     = "slack"
+	AdapterAliLS     = "alils"
 )
 
 // Legacy log level constants to ensure backwards compatibility.
@@ -115,6 +116,7 @@ type BeeLogger struct {
 	enableFuncCallDepth bool
 	loggerFuncCallDepth int
 	asynchronous        bool
+	prefix              string
 	msgChanLen          int64
 	msgChan             chan *logMsg
 	signalChan          chan string
@@ -246,7 +248,7 @@ func (bl *BeeLogger) Write(p []byte) (n int, err error) {
 	}
 	// writeMsg will always add a '\n' character
 	if p[len(p)-1] == '\n' {
-		p = p[0 : len(p)-1]
+		p = p[0: len(p)-1]
 	}
 	// set levelLoggerImpl to ensure all log message will be write out
 	err = bl.writeMsg(levelLoggerImpl, string(p))
@@ -266,6 +268,9 @@ func (bl *BeeLogger) writeMsg(logLevel int, msg string, v ...interface{}) error 
 	if len(v) > 0 {
 		msg = fmt.Sprintf(msg, v...)
 	}
+
+	msg = bl.prefix + " " + msg
+
 	when := time.Now()
 	if bl.enableFuncCallDepth {
 		_, file, line, ok := runtime.Caller(bl.loggerFuncCallDepth)
@@ -274,7 +279,7 @@ func (bl *BeeLogger) writeMsg(logLevel int, msg string, v ...interface{}) error 
 			line = 0
 		}
 		_, filename := path.Split(file)
-		msg = "[" + filename + ":" + strconv.FormatInt(int64(line), 10) + "] " + msg
+		msg = "[" + filename + ":" + strconv.Itoa(line) + "] " + msg
 	}
 
 	//set level info in front of filename info
@@ -304,6 +309,11 @@ func (bl *BeeLogger) SetLevel(l int) {
 	bl.level = l
 }
 
+// GetLevel Get Current log message level.
+func (bl *BeeLogger) GetLevel() int {
+	return bl.level
+}
+
 // SetLogFuncCallDepth set log funcCallDepth
 func (bl *BeeLogger) SetLogFuncCallDepth(d int) {
 	bl.loggerFuncCallDepth = d
@@ -317,6 +327,11 @@ func (bl *BeeLogger) GetLogFuncCallDepth() int {
 // EnableFuncCallDepth enable log funcCallDepth
 func (bl *BeeLogger) EnableFuncCallDepth(b bool) {
 	bl.enableFuncCallDepth = b
+}
+
+// set prefix
+func (bl *BeeLogger) SetPrefix(s string) {
+	bl.prefix = s
 }
 
 // start logger chan reading.
@@ -380,7 +395,10 @@ func (bl *BeeLogger) Error(format string, v ...interface{}) {
 
 // Warning Log WARNING level message.
 func (bl *BeeLogger) Warning(format string, v ...interface{}) {
-	bl.Warn(format, v...)
+	if LevelWarn > bl.level {
+		return
+	}
+	bl.writeMsg(LevelWarn, format, v...)
 }
 
 // Notice Log NOTICE level message.
@@ -393,7 +411,10 @@ func (bl *BeeLogger) Notice(format string, v ...interface{}) {
 
 // Informational Log INFORMATIONAL level message.
 func (bl *BeeLogger) Informational(format string, v ...interface{}) {
-	bl.Info(format, v...)
+	if LevelInfo > bl.level {
+		return
+	}
+	bl.writeMsg(LevelInfo, format, v...)
 }
 
 // Debug Log DEBUG level message.
@@ -425,7 +446,10 @@ func (bl *BeeLogger) Info(format string, v ...interface{}) {
 // Trace Log TRACE level message.
 // compatibility alias for Debug()
 func (bl *BeeLogger) Trace(format string, v ...interface{}) {
-	bl.Debug(format, v...)
+	if LevelDebug > bl.level {
+		return
+	}
+	bl.writeMsg(LevelDebug, format, v...)
 }
 
 // Flush flush all chan data.
@@ -482,9 +506,9 @@ func (bl *BeeLogger) flush() {
 }
 
 // beeLogger references the used application logger.
-var beeLogger *BeeLogger = NewLogger()
+var beeLogger = NewLogger()
 
-// GetLogger returns the default BeeLogger
+// GetBeeLogger returns the default BeeLogger
 func GetBeeLogger() *BeeLogger {
 	return beeLogger
 }
@@ -524,6 +548,7 @@ func Reset() {
 	beeLogger.Reset()
 }
 
+// Async set the beelogger with Async mode and hold msglen messages
 func Async(msgLen ...int64) *BeeLogger {
 	return beeLogger.Async(msgLen...)
 }
@@ -531,6 +556,11 @@ func Async(msgLen ...int64) *BeeLogger {
 // SetLevel sets the global log level used by the simple logger.
 func SetLevel(l int) {
 	beeLogger.SetLevel(l)
+}
+
+// SetPrefix sets the prefix
+func SetPrefix(s string) {
+	beeLogger.SetPrefix(s)
 }
 
 // EnableFuncCallDepth enable log funcCallDepth
@@ -551,11 +581,7 @@ func SetLogFuncCallDepth(d int) {
 
 // SetLogger sets a new logger.
 func SetLogger(adapter string, config ...string) error {
-	err := beeLogger.SetLogger(adapter, config...)
-	if err != nil {
-		return err
-	}
-	return nil
+	return beeLogger.SetLogger(adapter, config...)
 }
 
 // Emergency logs a message at emergency level.
